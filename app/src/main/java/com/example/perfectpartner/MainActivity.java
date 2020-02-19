@@ -5,6 +5,8 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
@@ -17,6 +19,8 @@ import android.widget.Toast;
 
 import com.firebase.ui.auth.AuthUI;
 import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -27,6 +31,7 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
+import com.google.firebase.storage.UploadTask;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -43,6 +48,7 @@ public class MainActivity extends AppCompatActivity {
     User_info user_info;
     ImageView profile_pic;
     StorageReference storageReff;
+    View progress;
 
     private FirebaseAuth mFirebaseAuth;
     private FirebaseAuth.AuthStateListener mAuthListener;
@@ -74,7 +80,7 @@ public class MainActivity extends AppCompatActivity {
                 FirebaseUser user = firebaseAuth.getCurrentUser();
                 if (user != null) {
                     user_id = user.getUid();
-                    Toast.makeText(MainActivity.this, ""  + user.getDisplayName(), Toast.LENGTH_LONG).show();
+                    //Toast.makeText(MainActivity.this, ""  + user.getDisplayName(), Toast.LENGTH_LONG).show();
                 } else {
                     startActivityForResult(
                             AuthUI.getInstance()
@@ -95,6 +101,8 @@ public class MainActivity extends AppCompatActivity {
                 profileIntent.setType("image/*");
                 profileIntent.setAction(Intent.ACTION_GET_CONTENT);
                 startActivityForResult(Intent.createChooser(profileIntent, "Select Image."), PICK_IMAGE);
+                progress = findViewById(R.id.progressBar);
+                progress.setVisibility(View.VISIBLE);
             }
         });
     }
@@ -119,7 +127,7 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void onComplete(@NonNull Task<Void> task) {
                         Toast.makeText(MainActivity.this, "User Sign Out", Toast.LENGTH_SHORT).show();
-                        finish();
+                        startActivity(new Intent(MainActivity.this, MainActivity.class));
                     }
                 });
 
@@ -135,6 +143,25 @@ public class MainActivity extends AppCompatActivity {
         user_info.setmonth(dob.getMonth());
         user_info.setday(dob.getDayOfMonth());
         user_info.setyear(dob.getYear());
+        progress = findViewById(R.id.progressBar);
+        progress.setVisibility(View.VISIBLE);
+        if (imagePath == null) {
+
+            Drawable drawable = this.getResources().getDrawable(R.drawable.com_facebook_profile_picture_blank_portrait);
+            Bitmap bitmap = BitmapFactory.decodeResource(getResources(),R.drawable.com_facebook_profile_picture_blank_portrait);
+            // openSelectProfilePictureDialog();
+           // userInformation();
+            // sendUserData();
+            finish();
+            //startActivity(new Intent(EditProfileActivity.this, HomeActivity.class));
+        }
+        else {
+            //userInformation();
+            sendUserData();
+            finish();
+            startActivity(new Intent(MainActivity.this, startup.class));
+            //startActivity(new Intent(this, startup.class));
+        }
         reff.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
@@ -154,7 +181,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
         reff.child("User Info").child(user_id).setValue(user_info);
-        Toast.makeText(MainActivity.this, "data was created", Toast.LENGTH_LONG).show();
+        //Toast.makeText(MainActivity.this, "data was created", Toast.LENGTH_LONG).show();
     }
 
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -173,18 +200,20 @@ public class MainActivity extends AppCompatActivity {
     private void sendUserData() {
         FirebaseDatabase firebaseDatabase = FirebaseDatabase.getInstance();
         // Get "User UID" from Firebase > Authentification > Users.
-        DatabaseReference databaseReference = firebaseDatabase.getReference(firebaseAuth.getUid());
-        StorageReference imageReference = storageReference.child(firebaseAuth.getUid()).child("Images").child("Profile Pic"); //User id/Images/Profile Pic.jpg
+        DatabaseReference reff = firebaseDatabase.getReference(mFirebaseAuth.getUid());
+        StorageReference imageReference = storageReff.child(mFirebaseAuth.getUid()).child("Images").child("Profile Pic"); //User id/Images/Profile Pic.jpg
         UploadTask uploadTask = imageReference.putFile(imagePath);
         uploadTask.addOnFailureListener(new OnFailureListener() {
             @Override
             public void onFailure(@NonNull Exception e) {
-                Toast.makeText(EditProfileActivity.this, "Error: Uploading profile picture", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "Error: Uploading profile picture", Toast.LENGTH_SHORT).show();
             }
         }).addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
             @Override
             public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
-                Toast.makeText(EditProfileActivity.this, "Profile picture uploaded", Toast.LENGTH_SHORT).show();
+                progress = findViewById(R.id.progressBar);
+                progress.setVisibility(View.GONE);
+               // Toast.makeText(MainActivity.this, "Profile picture uploaded", Toast.LENGTH_SHORT).show();
             }
         });
     }
